@@ -1,0 +1,53 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: s3-presigned-url
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  environment:
+    S3_BUCKET: { Ref: S3Bucket }
+  iamRoleStatements: # Signed URL will have same permissions as the IAM Role
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+      Resource: { Fn::Join: ['', [{ Fn::GetAtt: [S3Bucket, Arn] }, '/*']] } # arn:aws:s3:::bucketName/*
+
+functions:
+  signedUrl:
+    handler: handler.signedUrl
+    events:
+      - http: GET /signed-upload-url
+
+resources:
+  Resources:
+    S3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders: ['*']
+              AllowedMethods: [GET, POST, PUT]
+              AllowedOrigins: ['*']
+    S3BucketPolicy: # Allow uploaded files to be public and downloadable
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: { Ref: S3Bucket }
+        PolicyDocument:
+          Statement:
+            - Action:
+                - 's3:GetObject'
+              Effect: 'Allow'
+              Resource: { Fn::Join: ['', [{ Fn::GetAtt: [S3Bucket, Arn] }, '/*']] } # arn:aws:s3:::bucketName/*
+              Principal: '*'
